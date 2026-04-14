@@ -54,7 +54,7 @@ Com base nas fotos e nos dados fornecidos, estime e retorne um JSON com a seguin
 Retorne APENAS o JSON, sem markdown, sem explicações adicionais.`
 
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
