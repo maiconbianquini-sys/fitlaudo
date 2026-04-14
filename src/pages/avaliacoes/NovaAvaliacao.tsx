@@ -154,7 +154,11 @@ Retorne APENAS o JSON, sem markdown, sem explicações adicionais.`
                 { inline_data: { mime_type: 'image/jpeg', data: costas64 } },
               ],
             }],
-            generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
+            generationConfig: {
+              temperature: 0.4,
+              maxOutputTokens: 4096,
+              thinkingConfig: { thinkingBudget: 0 },
+            },
           }),
         }
       )
@@ -165,10 +169,18 @@ Retorne APENAS o JSON, sem markdown, sem explicações adicionais.`
       }
 
       const geminiData = await geminiRes.json()
-      const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+
+      // Collect all text parts (thinking model may return multiple parts)
+      const allParts = geminiData.candidates?.[0]?.content?.parts ?? []
+      const rawText = allParts
+        .filter((p: { text?: string }) => typeof p.text === 'string')
+        .map((p: { text: string }) => p.text)
+        .join('')
+
+      // Extract JSON — handle ```json blocks or plain JSON
+      const jsonMatch = rawText.match(/```json\s*([\s\S]*?)\s*```/) || rawText.match(/(\{[\s\S]*\})/)
       if (!jsonMatch) throw new Error('Resposta inválida da IA. Tente novamente.')
-      const analise = JSON.parse(jsonMatch[0])
+      const analise = JSON.parse(jsonMatch[1] ?? jsonMatch[0])
 
       // Step 3: Upload photos to Storage
       setStatusMsg('Salvando fotos...')
