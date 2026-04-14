@@ -119,26 +119,25 @@ export default function NovaAvaliacao() {
       const imc = (data.peso / Math.pow(data.altura / 100, 2)).toFixed(1)
 
       const prompt = `Você é um especialista em avaliação corporal e fisiologia do exercício.
-Analise as 3 fotos corporais (frente, lateral e costas) de um(a) aluno(a) com os seguintes dados:
+
+DADOS DO PACIENTE FORNECIDOS (OBRIGATÓRIO USAR NO LAUDO):
 - Peso: ${data.peso}kg
 - Altura: ${data.altura}cm
 - Idade: ${data.idade} anos
 - IMC calculado: ${imc}
 - Objetivo: ${data.objetivo}
 
-Com base nas fotos e nos dados fornecidos, estime e retorne um JSON com a seguinte estrutura:
+Analise as 3 imagens corporais (frente, lateral e costas) e retorne APENAS este JSON (sem markdown, sem comentários):
 {
-  "percentual_gordura": número (entre 3 e 50),
+  "percentual_gordura": número entre 3 e 50,
   "gordura_kg": número,
   "massa_magra_kg": número,
-  "agua_corporal": número (percentual, entre 40 e 70),
-  "gordura_visceral": número (entre 1 e 20),
-  "taxa_metabolica_basal": número (kcal/dia),
-  "idade_fisiologica": número (anos),
-  "laudo": "texto completo do laudo corporal em português, com pelo menos 3 parágrafos. Inclua: análise da composição corporal, pontos de atenção, recomendações para atingir o objetivo de ${data.objetivo}. Seja técnico mas acessível."
-}
-
-Retorne APENAS o JSON, sem markdown, sem explicações adicionais.`
+  "agua_corporal": número entre 40 e 70,
+  "gordura_visceral": número na escala 1 a 59,
+  "taxa_metabolica_basal": número em kcal/dia,
+  "idade_fisiologica": número em anos,
+  "laudo": "LAUDO CLÍNICO DE AVALIAÇÃO CORPORAL\\n\\nIdade: ${data.idade} anos\\nBiotipo: [Ectomorfo/Mesomorfo/Endomorfo]\\nPeso atual: ${data.peso}kg\\nAltura: ${data.altura}cm\\nIMC: ${imc}\\nObjetivo: ${data.objetivo}\\n\\n### 1. Avaliação da Composição Corporal\\n\\n[Com base no peso e análise visual, descrever: percentual de gordura, massa gorda, massa magra, gordura visceral, água corporal, idade fisiológica e taxa metabólica basal]\\n\\n### 2. Análise Visual da Composição Corporal\\n\\n[Descrever distribuição de gordura e desenvolvimento muscular observados nas fotos]\\n\\n### 3. Avaliação Muscular\\n\\n[Avaliar os principais grupos musculares com base nas imagens]\\n\\n### 4. Avaliação Postural Funcional\\n\\n[Avaliar alinhamento postural observado nas fotos]\\n\\n### 5. Interpretação Clínica Integrada\\n\\n[Analisar perfil metabólico e estado geral de saúde]\\n\\n### 6. Direcionamento para o Objetivo\\n\\n[Recomendações específicas para atingir: ${data.objetivo}]"
+}`
 
       const geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
