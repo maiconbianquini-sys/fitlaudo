@@ -120,23 +120,30 @@ export default function NovaAvaliacao() {
 
       const prompt = `Você é um especialista em avaliação corporal e fisiologia do exercício.
 
-DADOS DO PACIENTE FORNECIDOS (OBRIGATÓRIO USAR NO LAUDO):
+DADOS DO PACIENTE (OBRIGATÓRIO USAR NO LAUDO):
 - Peso: ${data.peso}kg
 - Altura: ${data.altura}cm
 - Idade: ${data.idade} anos
-- IMC calculado: ${imc}
+- IMC: ${imc}
 - Objetivo: ${data.objetivo}
 
-Analise as 3 imagens corporais (frente, lateral e costas) e retorne APENAS este JSON (sem markdown, sem comentários):
+Analise as 3 imagens corporais (frente, lateral e costas) e retorne APENAS este JSON (sem markdown, sem comentários).
+
+REGRAS PARA O CAMPO "laudo":
+1. Siga EXATAMENTE a estrutura abaixo com as 6 seções numeradas
+2. Na seção 1, use os MESMOS valores numéricos que você colocou nos outros campos do JSON
+3. Cada seção 2 a 6 deve ter 2 a 3 parágrafos detalhados e técnicos
+4. Use \\n para quebras de linha dentro do JSON
+
 {
   "percentual_gordura": número entre 3 e 50,
-  "gordura_kg": número,
-  "massa_magra_kg": número,
+  "gordura_kg": número com 1 decimal,
+  "massa_magra_kg": número com 1 decimal,
   "agua_corporal": número entre 40 e 70,
   "gordura_visceral": número na escala 1 a 59,
-  "taxa_metabolica_basal": número em kcal/dia,
-  "idade_fisiologica": número em anos,
-  "laudo": "LAUDO CLÍNICO DE AVALIAÇÃO CORPORAL\\n\\nIdade: ${data.idade} anos\\nBiotipo: [Ectomorfo/Mesomorfo/Endomorfo]\\nPeso atual: ${data.peso}kg\\nAltura: ${data.altura}cm\\nIMC: ${imc}\\nObjetivo: ${data.objetivo}\\n\\n### 1. Avaliação da Composição Corporal\\n\\n[Com base no peso e análise visual, descrever: percentual de gordura, massa gorda, massa magra, gordura visceral, água corporal, idade fisiológica e taxa metabólica basal]\\n\\n### 2. Análise Visual da Composição Corporal\\n\\n[Descrever distribuição de gordura e desenvolvimento muscular observados nas fotos]\\n\\n### 3. Avaliação Muscular\\n\\n[Avaliar os principais grupos musculares com base nas imagens]\\n\\n### 4. Avaliação Postural Funcional\\n\\n[Avaliar alinhamento postural observado nas fotos]\\n\\n### 5. Interpretação Clínica Integrada\\n\\n[Analisar perfil metabólico e estado geral de saúde]\\n\\n### 6. Direcionamento para o Objetivo\\n\\n[Recomendações específicas para atingir: ${data.objetivo}]"
+  "taxa_metabolica_basal": número inteiro em kcal/dia,
+  "idade_fisiologica": número inteiro em anos,
+  "laudo": "LAUDO CLÍNICO DE AVALIAÇÃO CORPORAL\\n\\nPaciente: [Masculino ou Feminino conforme as fotos]\\nIdade: ${data.idade} anos\\nBiotipo: [Ectomorfo, Mesomorfo ou Endomorfo]\\nPeso atual: ${data.peso}kg\\nAltura: ${data.altura}cm\\n\\n### 1. Avaliação da Composição Corporal\\n\\nCom base no peso de ${data.peso}kg e análise visual:\\n- Percentual de gordura corporal: [valor de percentual_gordura]%\\n- Massa gorda: [valor de gordura_kg] kg\\n- Massa magra total: [valor de massa_magra_kg] kg\\n- Massa muscular esquelética (estimada): [calcular ~45% da massa_magra_kg] kg\\n- Gordura visceral (escala 1-59): [valor de gordura_visceral]\\n- Água corporal total: [valor de agua_corporal]%\\n- Idade fisiológica estimada: [valor de idade_fisiologica] anos\\n- Taxa Metabólica Basal (Katch-McArdle): [valor de taxa_metabolica_basal] kcal/dia\\n\\n### 2. Análise Visual da Composição Corporal\\n\\n[2-3 parágrafos descrevendo em detalhe a distribuição de gordura corporal, o desenvolvimento muscular e as características físicas observadas nas fotos]\\n\\n### 3. Avaliação Muscular\\n\\n[2-3 parágrafos avaliando os principais grupos musculares visíveis nas imagens, simetria, volume e tônus muscular]\\n\\n### 4. Avaliação Postural Funcional\\n\\n[2-3 parágrafos avaliando alinhamento postural, simetria corporal e possíveis desvios observados nas fotos]\\n\\n### 5. Interpretação Clínica Integrada\\n\\n[2-3 parágrafos correlacionando todos os dados: IMC, composição corporal, perfil metabólico e estado geral de saúde]\\n\\n### 6. Direcionamento para o Objetivo: ${data.objetivo}\\n\\n[2-3 parágrafos com recomendações específicas de treino, nutrição e metas para atingir o objetivo declarado]"
 }`
 
       const geminiRes = await fetch(
