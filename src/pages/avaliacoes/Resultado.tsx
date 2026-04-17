@@ -279,20 +279,23 @@ Retorne APENAS o JSON, sem markdown.`
 </body>
 </html>`
 
-      const fileName = `laudos/${id}.html`
+      // Abrir imediatamente via Blob URL (funciona sempre, sem depender de Storage)
       const blob = new Blob([html], { type: 'text/html' })
-      const { error: storageError } = await supabase.storage
+      const blobUrl = URL.createObjectURL(blob)
+      window.open(blobUrl, '_blank')
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
+
+      // Tentar salvar no Storage para persistir o link (mesmo padrão de path das fotos)
+      const fileName = `avaliacoes/${treinador.id}/${id}/laudo.html`
+      const { error: storageError, data: storageData } = await supabase.storage
         .from('fitlaudo-assets')
         .upload(fileName, blob, { upsert: true, contentType: 'text/html' })
 
-      if (storageError) throw new Error(storageError.message)
-
-      const { data: { publicUrl } } = supabase.storage.from('fitlaudo-assets').getPublicUrl(fileName)
-
-      await supabase.from('avaliacoes').update({ pdf_url: publicUrl }).eq('id', id)
-
-      setAvaliacao((prev) => prev ? { ...prev, pdf_url: publicUrl } : prev)
-      window.open(publicUrl, '_blank')
+      if (!storageError && storageData) {
+        const { data: { publicUrl } } = supabase.storage.from('fitlaudo-assets').getPublicUrl(fileName)
+        await supabase.from('avaliacoes').update({ pdf_url: publicUrl }).eq('id', id)
+        setAvaliacao((prev) => prev ? { ...prev, pdf_url: publicUrl } : prev)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao gerar PDF.')
     } finally {
