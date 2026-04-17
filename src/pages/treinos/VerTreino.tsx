@@ -7,11 +7,11 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { formatDate } from '../../lib/utils'
-import type { Treino, Aluno } from '../../types'
+import type { Treino, Aluno, Avaliacao, Exercicio } from '../../types'
 
 export default function VerTreino() {
   const { id } = useParams<{ id: string }>()
-  const { session } = useAuth()
+  const { treinador } = useAuth()
   const navigate = useNavigate()
   const [treino, setTreino] = useState<Treino | null>(null)
   const [aluno, setAluno] = useState<Aluno | null>(null)
@@ -33,18 +33,120 @@ export default function VerTreino() {
   }, [id])
 
   async function handleGerarPdf() {
-    if (!treino?.avaliacao_id) return
+    if (!treino || !aluno || !treinador) return
     setGerandoPdf(true)
+    setError(null)
+
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const response = await fetch(`${supabaseUrl}/functions/v1/gerar-pdf`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ avaliacao_id: treino.avaliacao_id }),
-      })
-      if (!response.ok) throw new Error('Erro ao gerar PDF.')
-      const result = await response.json()
-      if (result.pdf_url) window.open(result.pdf_url, '_blank')
+      // Buscar dados da avaliação se existir
+      let avaliacao: Avaliacao | null = null
+      if (treino.avaliacao_id) {
+        const { data } = await supabase.from('avaliacoes').select('*').eq('id', treino.avaliacao_id).single()
+        avaliacao = data as Avaliacao
+      }
+
+      const treinoHTML = treino.treino_completo?.dias?.map((dia) => `
+        <div class="dia-treino">
+          <h3>${dia.dia} — ${dia.nome}</h3>
+          <table>
+            <thead><tr><th>Exercício</th><th>Séries</th><th>Repetições</th><th>Descanso</th><th>Obs.</th></tr></thead>
+            <tbody>
+              ${dia.exercicios.map((ex: Exercicio) => `
+                <tr>
+                  <td>${ex.nome}</td>
+                  <td>${ex.series}</td>
+                  <td>${ex.repeticoes}</td>
+                  <td>${ex.descanso}</td>
+                  <td>${ex.observacao ?? '—'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `).join('') ?? ''
+
+      const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; color: #1f2937; background: #fff; }
+  .header { background: #2D9D8F; color: white; padding: 24px 32px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 24px; font-weight: bold; }
+  .header p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+  .logo { max-height: 56px; max-width: 120px; object-fit: contain; }
+  .content { padding: 24px 32px; }
+  .student-info { background: #f0fdfb; border: 1px solid #a7f3d0; border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+  .student-info h2 { font-size: 18px; color: #2D9D8F; margin-bottom: 8px; }
+  .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .info-item p:first-child { font-size: 11px; color: #6b7280; }
+  .info-item p:last-child { font-weight: 600; font-size: 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+  .metric-card { background: #f9fafb; border-radius: 8px; padding: 12px; text-align: center; border: 1px solid #e5e7eb; }
+  .metric-card .value { font-size: 20px; font-weight: bold; color: #2D9D8F; }
+  .metric-card .label { font-size: 10px; color: #6b7280; margin-top: 2px; }
+  .section-title { font-size: 16px; font-weight: bold; color: #2D9D8F; border-bottom: 2px solid #2D9D8F; padding-bottom: 6px; margin: 20px 0 12px; }
+  .laudo { line-height: 1.7; font-size: 13px; color: #374151; white-space: pre-wrap; }
+  .dia-treino { margin-bottom: 16px; }
+  .dia-treino h3 { background: #e8f7f5; color: #1a7d71; padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { background: #f3f4f6; padding: 7px 10px; text-align: left; font-weight: 600; color: #374151; }
+  td { padding: 6px 10px; border-bottom: 1px solid #f3f4f6; }
+  .footer { margin-top: 32px; padding: 16px 32px; border-top: 2px solid #2D9D8F; display: flex; justify-content: space-between; font-size: 11px; color: #6b7280; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>FitLaudo</h1>
+    <p>Plano de Treino</p>
+  </div>
+  <div style="text-align:right">
+    ${treinador.logo_url ? `<img src="${treinador.logo_url}" class="logo" alt="logo" />` : ''}
+    <p style="font-size:13px;font-weight:600;margin-top:4px">${treinador.nome}</p>
+    ${treinador.cref ? `<p style="font-size:11px;opacity:0.85">CREF: ${treinador.cref}</p>` : ''}
+  </div>
+</div>
+
+<div class="content">
+  <div class="student-info">
+    <h2>${aluno.nome}</h2>
+    <div class="info-grid">
+      <div class="info-item"><p>Data do Treino</p><p>${formatDate(treino.created_at)}</p></div>
+      <div class="info-item"><p>Objetivo</p><p>${aluno.objetivo}</p></div>
+      <div class="info-item"><p>Frequência</p><p>${treino.frequencia_semanal}x/semana</p></div>
+      <div class="info-item"><p>Duração</p><p>${treino.duracao_minutos} min/sessão</p></div>
+    </div>
+  </div>
+
+  ${avaliacao ? `
+  <div class="section-title">Métricas Corporais</div>
+  <div class="metrics">
+    <div class="metric-card"><div class="value">${avaliacao.peso}kg</div><div class="label">Peso</div></div>
+    <div class="metric-card"><div class="value">${avaliacao.altura}cm</div><div class="label">Altura</div></div>
+    ${avaliacao.percentual_gordura != null ? `<div class="metric-card"><div class="value">${avaliacao.percentual_gordura}%</div><div class="label">Gordura</div></div>` : ''}
+    ${avaliacao.massa_magra_kg != null ? `<div class="metric-card"><div class="value">${avaliacao.massa_magra_kg}kg</div><div class="label">Massa Magra</div></div>` : ''}
+    ${avaliacao.taxa_metabolica_basal != null ? `<div class="metric-card"><div class="value">${avaliacao.taxa_metabolica_basal}</div><div class="label">TMB kcal</div></div>` : ''}
+  </div>
+  ` : ''}
+
+  <div class="section-title">Plano de Treino — ${treino.titulo}</div>
+  <p style="font-size:12px;color:#6b7280;margin-bottom:12px">Nível: ${treino.nivel_experiencia} · ${treino.frequencia_semanal}x/semana · ${treino.duracao_minutos} min/sessão</p>
+  ${treinoHTML}
+</div>
+
+<div class="footer">
+  <span>Gerado pelo FitLaudo em ${formatDate(new Date().toISOString())}</span>
+  <span>${treinador.nome}${treinador.cref ? ` — CREF: ${treinador.cref}` : ''}</span>
+</div>
+</body>
+</html>`
+
+      const blob = new Blob([html], { type: 'text/html' })
+      const blobUrl = URL.createObjectURL(blob)
+      window.open(blobUrl, '_blank')
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao gerar PDF.')
     } finally {
@@ -80,11 +182,12 @@ export default function VerTreino() {
 
       {/* Actions */}
       <div className="flex gap-3 mb-6 ml-11">
-        {treino.avaliacao_id && (
-          <Button variant="secondary" onClick={handleGerarPdf} loading={gerandoPdf}>
-            {gerandoPdf ? <><Loader2 className="h-4 w-4 animate-spin" />Gerando PDF...</> : <><Download className="h-4 w-4" />Gerar PDF</>}
-          </Button>
-        )}
+        <Button variant="secondary" onClick={handleGerarPdf} disabled={gerandoPdf}>
+          {gerandoPdf
+            ? <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Gerando PDF...</span>
+            : <><Download className="h-4 w-4" />Gerar PDF</>
+          }
+        </Button>
         {treino.avaliacao_id && (
           <Button variant="ghost" onClick={() => navigate(`/avaliacoes/${treino.avaliacao_id}`)}>
             Ver Avaliação
