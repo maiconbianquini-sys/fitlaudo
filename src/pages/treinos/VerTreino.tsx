@@ -65,8 +65,6 @@ export default function VerTreino() {
         </div>
       `).join('') ?? ''
 
-      const nomeArquivo = `treino-${aluno.nome.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0,10)}.html`
-
       const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
