@@ -232,14 +232,16 @@ Retorne APENAS o JSON, sem markdown.`
 <body>
 <div class="toolbar">
   <span>📄 Laudo — ${aluno.nome}</span>
-  <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+  <button class="btn-print" onclick="window.print()">🖨️ Salvar como PDF</button>
   <a id="dl" style="text-decoration:none"><button class="btn-download">⬇️ Baixar HTML</button></a>
 </div>
 <script>
   (function(){
     var a = document.getElementById('dl');
-    var html = document.documentElement.outerHTML;
-    var blob = new Blob([html], {type:'text/html'});
+    var style = document.querySelector('style').outerHTML;
+    var content = document.querySelector('.page-content').outerHTML;
+    var cleanHtml = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' + style + '</head><body>' + content + '</body></html>';
+    var blob = new Blob([cleanHtml], {type:'text/html'});
     a.href = URL.createObjectURL(blob);
     a.download = '${nomeArquivo}';
   })();
@@ -291,7 +293,10 @@ Retorne APENAS o JSON, sem markdown.`
 
   ${avaliacao.laudo_ia ? `
   <div class="section-title">Laudo Corporal</div>
-  <div class="laudo">${avaliacao.laudo_ia}</div>
+  <div class="laudo">${avaliacao.laudo_ia
+    .replace(/### (.+)/g, '<h3 style="font-size:14px;font-weight:700;color:#1a7d71;margin:16px 0 6px">$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>')}</div>
   ` : ''}
 
   ${treino ? `

@@ -113,13 +113,16 @@ export default function VerTreino() {
 <body>
 <div class="toolbar">
   <span>📄 Treino — ${aluno.nome}</span>
-  <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+  <button class="btn-print" onclick="window.print()">🖨️ Salvar como PDF</button>
   <a id="dl" style="text-decoration:none"><button class="btn-download">⬇️ Baixar HTML</button></a>
 </div>
 <script>
   (function(){
     var a = document.getElementById('dl');
-    var blob = new Blob([document.documentElement.outerHTML], {type:'text/html'});
+    var style = document.querySelector('style').outerHTML;
+    var content = document.querySelector('.page-content').outerHTML;
+    var cleanHtml = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' + style + '</head><body>' + content + '</body></html>';
+    var blob = new Blob([cleanHtml], {type:'text/html'});
     a.href = URL.createObjectURL(blob);
     a.download = '${nomeArquivo}';
   })();
