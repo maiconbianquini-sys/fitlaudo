@@ -198,8 +198,6 @@ Retorne APENAS o JSON, sem markdown.`
   .toolbar button { padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
   .btn-print { background: #2D9D8F; color: white; }
   .btn-print:hover { background: #238a7d; }
-  .btn-download { background: #374151; color: white; border: 1px solid #6b7280 !important; }
-  .btn-download:hover { background: #4b5563; }
   .page-content { margin-top: 52px; }
   @media print {
     .toolbar { display: none !important; }
@@ -233,19 +231,8 @@ Retorne APENAS o JSON, sem markdown.`
 <div class="toolbar">
   <span>📄 Laudo — ${aluno.nome}</span>
   <button class="btn-print" onclick="window.print()">🖨️ Salvar como PDF</button>
-  <a id="dl" style="text-decoration:none"><button class="btn-download">⬇️ Baixar HTML</button></a>
+  <span style="font-size:11px;opacity:0.6">No diálogo: Destino → Salvar como PDF · Mais definições → desmarcar Cabeçalhos e rodapés</span>
 </div>
-<script>
-  (function(){
-    var a = document.getElementById('dl');
-    var style = document.querySelector('style').outerHTML;
-    var content = document.querySelector('.page-content').outerHTML;
-    var cleanHtml = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' + style + '</head><body>' + content + '</body></html>';
-    var blob = new Blob([cleanHtml], {type:'text/html'});
-    a.href = URL.createObjectURL(blob);
-    a.download = '${nomeArquivo}';
-  })();
-</script>
 <div class="page-content">
 <div class="header">
   <div>
