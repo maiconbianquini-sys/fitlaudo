@@ -65,6 +65,8 @@ export default function VerTreino() {
         </div>
       `).join('') ?? ''
 
+      const nomeArquivo = `treino-${aluno.nome.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0,10)}.html`
+
       const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -72,6 +74,18 @@ export default function VerTreino() {
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: Arial, sans-serif; color: #1f2937; background: #fff; }
+  .toolbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: #1f2937; color: white; padding: 10px 24px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  .toolbar span { font-size: 14px; font-weight: 600; flex: 1; }
+  .toolbar button { padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .btn-print { background: #2D9D8F; color: white; }
+  .btn-print:hover { background: #238a7d; }
+  .btn-download { background: #374151; color: white; border: 1px solid #6b7280 !important; }
+  .btn-download:hover { background: #4b5563; }
+  .page-content { margin-top: 52px; }
+  @media print {
+    .toolbar { display: none !important; }
+    .page-content { margin-top: 0; }
+  }
   .header { background: #2D9D8F; color: white; padding: 24px 32px; display: flex; align-items: center; justify-content: space-between; }
   .header h1 { font-size: 24px; font-weight: bold; }
   .header p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
@@ -97,6 +111,20 @@ export default function VerTreino() {
 </style>
 </head>
 <body>
+<div class="toolbar">
+  <span>📄 Treino — ${aluno.nome}</span>
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+  <a id="dl" style="text-decoration:none"><button class="btn-download">⬇️ Baixar HTML</button></a>
+</div>
+<script>
+  (function(){
+    var a = document.getElementById('dl');
+    var blob = new Blob([document.documentElement.outerHTML], {type:'text/html'});
+    a.href = URL.createObjectURL(blob);
+    a.download = '${nomeArquivo}';
+  })();
+</script>
+<div class="page-content">
 <div class="header">
   <div>
     <h1>FitLaudo</h1>
@@ -139,6 +167,7 @@ export default function VerTreino() {
 <div class="footer">
   <span>Gerado pelo FitLaudo em ${formatDate(new Date().toISOString())}</span>
   <span>${treinador.nome}${treinador.cref ? ` — CREF: ${treinador.cref}` : ''}</span>
+</div>
 </div>
 </body>
 </html>`
