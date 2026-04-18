@@ -163,6 +163,111 @@ Retorne APENAS o JSON, sem markdown.`
     setError(null)
 
     try {
+      // Buscar todas as avaliações do aluno para gráfico de evolução
+      const { data: todasAvaliacoes } = await supabase
+        .from('avaliacoes')
+        .select('*')
+        .eq('aluno_id', aluno.id)
+        .order('created_at', { ascending: true })
+
+      const evolucao = (todasAvaliacoes ?? []) as typeof avaliacao[]
+
+      // Gerar SVG de linha inline
+      function buildSvgLine(
+        values: number[],
+        labels: string[],
+        color: string,
+        unit: string,
+        title: string,
+        invertGain: boolean
+      ): string {
+        if (values.length < 2) return ''
+        const W = 260, H = 100
+        const PAD = { top: 14, right: 12, bottom: 26, left: 38 }
+        const cW = W - PAD.left - PAD.right
+        const cH = H - PAD.top - PAD.bottom
+        const min = Math.min(...values)
+        const max = Math.max(...values)
+        const range = max - min || 1
+        const xOf = (i: number) => PAD.left + (i / (values.length - 1)) * cW
+        const yOf = (v: number) => PAD.top + cH - ((v - min) / range) * cH
+        const linePath = values.map((v, i) => `${i === 0 ? 'M' : 'L'} ${xOf(i).toFixed(1)} ${yOf(v).toFixed(1)}`).join(' ')
+        const areaPath = `${linePath} L ${xOf(values.length - 1).toFixed(1)} ${(PAD.top + cH).toFixed(1)} L ${PAD.left} ${(PAD.top + cH).toFixed(1)} Z`
+        const diff = values[values.length - 1] - values[0]
+        const positive = invertGain ? diff < 0 : diff > 0
+        const diffColor = diff === 0 ? '#6b7280' : positive ? '#16a34a' : '#dc2626'
+        const sign = diff > 0 ? '+' : ''
+        const grids = [0, 0.5, 1].map((t) => {
+          const y = PAD.top + cH * (1 - t)
+          const val = (min + range * t).toFixed(1)
+          return `<line x1="${PAD.left}" y1="${y.toFixed(1)}" x2="${PAD.left + cW}" y2="${y.toFixed(1)}" stroke="#f3f4f6" stroke-width="1"/>
+                  <text x="${PAD.left - 3}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="8" fill="#9ca3af">${val}</text>`
+        }).join('')
+        const dots = values.map((v, i) =>
+          `<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="2.5" fill="white" stroke="${color}" stroke-width="2"/>`
+        ).join('')
+        const xlabels = labels.map((l, i) =>
+          `<text x="${xOf(i).toFixed(1)}" y="${(H - 3).toFixed(1)}" text-anchor="middle" font-size="7.5" fill="#9ca3af">${l}</text>`
+        ).join('')
+        const last = values[values.length - 1]
+        return `
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-size:11px;font-weight:700;color:#374151">${title}</span>
+              <span style="font-size:11px;font-weight:700;color:${diffColor}">${sign}${diff.toFixed(1)}${unit}</span>
+            </div>
+            <svg width="100%" viewBox="0 0 ${W} ${H}" style="overflow:visible">
+              ${grids}
+              <path d="${areaPath}" fill="${color}" fill-opacity="0.08"/>
+              <path d="${linePath}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              ${dots}
+              ${xlabels}
+              <text x="${(xOf(values.length - 1) + 5).toFixed(1)}" y="${(yOf(last) + 4).toFixed(1)}" font-size="9" font-weight="bold" fill="${color}">${last}${unit}</text>
+            </svg>
+          </div>`
+      }
+
+      const chartLabels = evolucao.map((av) => {
+        const d = new Date(av.created_at)
+        return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+      })
+
+      const evolucaoHTML = evolucao.length >= 2 ? `
+        <div class="section-title">Evolução Corporal (${evolucao.length} avaliações)</div>
+        <div style="display:flex;gap:20px;margin-bottom:12px">
+          ${buildSvgLine(evolucao.map(a => a.peso), chartLabels, '#2D9D8F', 'kg', 'Peso', false)}
+          ${evolucao.every(a => a.percentual_gordura != null)
+            ? buildSvgLine(evolucao.map(a => a.percentual_gordura!), chartLabels, '#ef4444', '%', '% Gordura', true)
+            : ''}
+        </div>
+        <div style="display:flex;gap:20px;margin-bottom:16px">
+          ${evolucao.every(a => a.massa_magra_kg != null)
+            ? buildSvgLine(evolucao.map(a => a.massa_magra_kg!), chartLabels, '#6366f1', 'kg', 'Massa Magra', false)
+            : ''}
+          ${evolucao.every(a => a.agua_corporal != null)
+            ? buildSvgLine(evolucao.map(a => a.agua_corporal!), chartLabels, '#0ea5e9', '%', 'Água Corporal', false)
+            : ''}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding-top:12px;border-top:1px solid #f3f4f6">
+          ${[
+            { label: 'Peso', v1: evolucao[0].peso, v2: evolucao[evolucao.length-1].peso, unit: 'kg', inv: false },
+            ...(evolucao[0].percentual_gordura != null ? [{ label: '% Gordura', v1: evolucao[0].percentual_gordura!, v2: evolucao[evolucao.length-1].percentual_gordura!, unit: '%', inv: true }] : []),
+            ...(evolucao[0].massa_magra_kg != null ? [{ label: 'Massa Magra', v1: evolucao[0].massa_magra_kg!, v2: evolucao[evolucao.length-1].massa_magra_kg!, unit: 'kg', inv: false }] : []),
+            ...(evolucao[0].taxa_metabolica_basal != null ? [{ label: 'TMB', v1: evolucao[0].taxa_metabolica_basal!, v2: evolucao[evolucao.length-1].taxa_metabolica_basal!, unit: 'kcal', inv: false }] : []),
+          ].map(({ label, v1, v2, unit, inv }) => {
+            const diff = v2 - v1
+            const ok = inv ? diff < 0 : diff > 0
+            const color = diff === 0 ? '#6b7280' : ok ? '#16a34a' : '#dc2626'
+            const sign = diff > 0 ? '+' : ''
+            return `<div style="background:#f9fafb;border-radius:8px;padding:10px;text-align:center">
+              <p style="font-size:10px;color:#6b7280;margin-bottom:3px">${label}</p>
+              <p style="font-size:14px;font-weight:700;color:#1f2937">${v2}${unit}</p>
+              <p style="font-size:11px;font-weight:700;color:${color}">${sign}${diff.toFixed(1)}${unit}</p>
+            </div>`
+          }).join('')}
+        </div>
+      ` : ''
+
       const diasTreino = treino?.treino_completo?.dias ?? []
       const treinoHTML = diasTreino.map((dia) => `
         <div class="dia-treino">
@@ -275,6 +380,8 @@ Retorne APENAS o JSON, sem markdown.`
     ${avaliacao.taxa_metabolica_basal != null ? `<div class="metric-card"><div class="value">${avaliacao.taxa_metabolica_basal}</div><div class="label">TMB kcal</div></div>` : ''}
     ${avaliacao.idade_fisiologica != null ? `<div class="metric-card"><div class="value">${avaliacao.idade_fisiologica}</div><div class="label">Idade Fisiol.</div></div>` : ''}
   </div>
+
+  ${evolucaoHTML}
 
   ${avaliacao.laudo_ia ? `
   <div class="section-title">Laudo Corporal</div>
